@@ -109,8 +109,44 @@ def example_apply_other_standard_algorithms(filename):
             print(names[j], acc_mean_test, acc_stdDev_test)
 
 
+def example_neural_network(filename):
+    from keras.models import Sequential
+    from keras.layers import Dense
+
+    # our (classifiable) data
+    X, y, scalefactor = import_data_classes(filename, n_classes=50)
+    print("scalefactor", scalefactor)
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.2)
+
+    # define the keras model
+    model = Sequential([
+        Dense(10, input_dim=len(X[0]), activation='relu'),
+        Dense(20, activation='relu'),
+        Dense(60, activation='relu'),
+        Dense(30, activation='relu'),
+        Dense(30, activation='relu'),
+        Dense(30, activation='relu'),
+        Dense(np.max(y)+1, activation='sigmoid')
+        ])
+
+    model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+    model.fit(X_train,y_train, epochs=100, batch_size=50)
+
+    y_hat_train = np.argmax(model.predict(X_train), axis=1)
+    y_hat_test = np.argmax(model.predict(X_test), axis=1)
+
+
+    acc_mean_train, acc_stdDev_train = accuracy_metric_classes(y_hat_train, y_train, scalefactor)
+    print(acc_mean_train, acc_stdDev_train)
+    acc_mean_test, acc_stdDev_test = accuracy_metric_classes(y_hat_test, y_test, scalefactor)
+    print(acc_mean_test, acc_stdDev_test)
+
+
 if __name__ == "__main__":
     FILENAME="data.csv/data_v01.csv"
 
     example_apply_linear_regression(FILENAME)
     example_apply_other_standard_algorithms(FILENAME)
+    example_neural_network(FILENAME)
