@@ -1,5 +1,8 @@
+# written by David Sommer 2019 to illustrate ML to a friend
+
 import numpy as np
-import matplotlib.pyplot as plts
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPClassifier
 from sklearn.neighbors import KNeighborsClassifier
@@ -11,121 +14,103 @@ from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 
-from data import import_data
+from data import import_data_contineous, import_data_classes
 
 
-def accuracy_metric(y_hat, y, scalefactor=1):
-    dist = np.abs(y_hat - y)
+def accuracy_metric_classes(y_hat, y, scalefactor=1):
+    arr = np.abs(y_hat - y, dtype=np.float64)
 
-    da_mean = np.mean(dist)
-    da_stdDev = np.sqrt(np.var(dist))
+    da_mean = np.mean(arr)
+    da_stdDev = np.sqrt(np.var(arr))
 
     return scalefactor*da_mean, scalefactor*da_stdDev
 
 
-names = ["Nearest Neighbors", "Linear SVM", "RBF SVM", "Gaussian Process",
-         "Decision Tree", "Random Forest", "Neural Net", "AdaBoost",
-         "Naive Bayes", "QDA"]
+def accuracy_metric_contineous(y_hat, y):
+    err = np.abs(y_hat - y)
 
-classifiers = [
-    KNeighborsClassifier(3),
-    SVC(kernel="linear", C=0.025),
-    SVC(gamma=2, C=1),
-    GaussianProcessClassifier(1.0 * RBF(1.0)),
-    DecisionTreeClassifier(max_depth=5),
-    RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
-    MLPClassifier(alpha=1, max_iter=1000),
-    AdaBoostClassifier(),
-    GaussianNB(),
-    QuadraticDiscriminantAnalysis()]
+    da_mean = np.mean(err)
+    da_stdDev = np.sqrt(np.var(err))
+
+    return da_mean, da_stdDev
 
 
-FILENAME="data.csv"
-NUM_CLASSES=20
-h = 0.02
+def example_apply_linear_regression(filename):
+    X ,y = import_data_contineous(filename)
 
-X, y = import_data(FILENAME, NUM_CLASSES)
+    X = X[:,(2,3)]
 
-datasets = ((X,y))
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.2, random_state=42)
 
-for i, data in enumerate(datasets):
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.2)  # random_state=42
-    for j, classifier in enumerate(classifiers):
-        classifier.fit(X_train, y_train)
+    reg = LinearRegression().fit(X_train, y_train)
 
-        y_hat = classifier.predict(X_test)
+    y_hat_train = reg.predict(X_train)
+    y_hat_test = reg.predict(X_test)
 
-        acc_mean, acc_stdDev = accuracy_metric(y_hat, y_test)
-        print(names[j], acc_mean, acc_stdDev)
+    acc_train = accuracy_metric_contineous(y_hat_train, y_train)
+    acc_test = accuracy_metric_contineous(y_hat_test, y_test)
 
-"""
-figure = plt.figure(figsize=(27, 9))
-i = 1
-# iterate over datasets
-for ds_cnt, ds in enumerate(datasets):
-    # preprocess dataset, split into training and test part
-    X, y = ds
-    X = StandardScaler().fit_transform(X)
-    X_train, X_test, y_train, y_test = \
-        train_test_split(X, y, test_size=.4, random_state=42)
+    print(acc_train)
+    print(acc_test)
+    print(np.mean(np.abs(X_train[:,0] - y_train)))
 
-    x_min, x_max = X[:, 0].min() - .5, X[:, 0].max() + .5
-    y_min, y_max = X[:, 1].min() - .5, X[:, 1].max() + .5
-    xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
-                         np.arange(y_min, y_max, h))
 
-    # just plot the dataset first
-    cm = plt.cm.RdBu
-    cm_bright = ListedColormap(['#FF0000', '#0000FF'])
-    ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
-    if ds_cnt == 0:
-        ax.set_title("Input data")
-    # Plot the training points
-    ax.scatter(X_train[:, 0], X_train[:, 1], c=y_train, cmap=cm_bright,
-               edgecolors='k')
-    # Plot the testing points
-    ax.scatter(X_test[:, 0], X_test[:, 1], c=y_test, cmap=cm_bright, alpha=0.6,
-               edgecolors='k')
-    ax.set_xlim(xx.min(), xx.max())
-    ax.set_ylim(yy.min(), yy.max())
-    ax.set_xticks(())
-    ax.set_yticks(())
-    i += 1
+def example_apply_other_standard_algorithms(filename):
+    names = ["Nearest Neighbors", "Linear SVM", "RBF SVM", "Gaussian Process",
+             "Decision Tree", "Random Forest", "Neural Net", "AdaBoost",
+             "Naive Bayes", "QDA"]
 
-    for name, clf in zip(names, classifiers):
-        ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
-        clf.fit(X_train, y_train)
-        score = clf.score(X_test, y_test)
+    classifiers = [
+        KNeighborsClassifier(3),
+        SVC(kernel="linear", C=0.025),
+        SVC(gamma=2, C=1),
+        GaussianProcessClassifier(1.0 * RBF(1.0)),
+        DecisionTreeClassifier(max_depth=5),
+        RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
+        MLPClassifier(alpha=1, max_iter=1000),
+        AdaBoostClassifier(),
+        GaussianNB(),
+        QuadraticDiscriminantAnalysis()]
 
-        # Plot the decision boundary. For that, we will assign a color to each
-        # point in the mesh [x_min, x_max]x[y_min, y_max].
-        if hasattr(clf, "decision_function"):
-            Z = clf.decision_function(np.c_[xx.ravel(), yy.ravel()])
-        else:
-            Z = clf.predict_proba(np.c_[xx.ravel(), yy.ravel()])[:, 1]
 
-        # Put the result into a color plot
-        Z = Z.reshape(xx.shape)
-        ax.contourf(xx, yy, Z, cmap=cm, alpha=.8)
+    NUM_CLASSES=50
 
-        # Plot the training points
-        ax.scatter(X_train[:, 0], X_train[:, 1], c=y_train, cmap=cm_bright,
-                   edgecolors='k')
-        # Plot the testing points
-        ax.scatter(X_test[:, 0], X_test[:, 1], c=y_test, cmap=cm_bright,
-                   edgecolors='k', alpha=0.6)
+    DATA_CUT = 1000
+    X, y, scalefactor = import_data_classes(filename, NUM_CLASSES)
+    print("scalefactor", scalefactor)
+    X, y = X[:DATA_CUT], y[:DATA_CUT]
 
-        ax.set_xlim(xx.min(), xx.max())
-        ax.set_ylim(yy.min(), yy.max())
-        ax.set_xticks(())
-        ax.set_yticks(())
-        if ds_cnt == 0:
-            ax.set_title(name)
-        ax.text(xx.max() - .3, yy.min() + .3, ('%.2f' % score).lstrip('0'),
-                size=15, horizontalalignment='right')
-        i += 1
+    if False: # if you want to plot the data
+        plt.plot(X[:,2],X[:,3], ".", label="2,3")
+        plt.plot(X[:,2],y, ".", label="2,y")
+        plt.plot(X[:,3],y, ".", label="3,y")
+        plt.plot(X[:,2] - X[:,3],y, ".", label="2-3,y")
+        plt.legend()
+        plt.show()
 
-plt.tight_layout()
-plt.show()
-"""
+    datasets = ((X,y),)
 
+    for i, data in enumerate(datasets):
+        print("i", i)
+        X, y = data
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.2)  # random_state=42
+        for j, classifier in enumerate(classifiers):
+            print("y", j)
+            classifier.fit(X_train, y_train)
+
+            y_hat_train = classifier.predict(X_train)
+            y_hat_test = classifier.predict(X_test)
+
+
+
+            acc_mean_train, acc_stdDev_train = accuracy_metric_classes(y_hat_train, y_train, scalefactor)
+            print(names[j], acc_mean_train, acc_stdDev_train)
+            acc_mean_test, acc_stdDev_test = accuracy_metric_classes(y_hat_test, y_test, scalefactor)
+            print(names[j], acc_mean_test, acc_stdDev_test)
+
+
+if __name__ == "__main__":
+    FILENAME="data.csv/data_v01.csv"
+
+    example_apply_linear_regression(FILENAME)
+    example_apply_other_standard_algorithms(FILENAME)
